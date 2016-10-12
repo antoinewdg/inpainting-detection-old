@@ -8,5 +8,5 @@ mkdir bin
 cd bin
 cmake ..
 make
-./project_name ../files/lena_color_512.tif
+./copy_move_detector ../files/lena_color_512.tif
 ```

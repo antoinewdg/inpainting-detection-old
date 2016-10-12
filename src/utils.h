@@ -12,6 +12,7 @@
 
 #include <iostream>
 #include <chrono>
+#include <array>
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgcodecs.hpp>
@@ -24,7 +25,9 @@ using std::cout;
 using std::endl;
 using std::string;
 using std::cerr;
+using std::array;
 using cv::Vec3b;
+using cv::Vec2i;
 using cv::Point2f;
 
 
