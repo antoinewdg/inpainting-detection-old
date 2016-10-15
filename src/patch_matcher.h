@@ -41,9 +41,9 @@ public:
 
     void initialize_nnf();
 
-    inline int unchecked_distance(int i, int j, int k, int l, int max_d);
+    inline int unchecked_distance(int i, int j, int k, int l, int max_d = std::numeric_limits<int>::max());
 
-    int checked_distance(int i, int j, const Vec2i &q, int max_d);
+    int checked_distance(int i, int j, const Vec2i &q, int max_d = std::numeric_limits<int>::max());
 
     int patch_distance(const Mat_<Vec3b> &p, const Mat_<Vec3b> &q, int max_d);
 
@@ -57,7 +57,7 @@ public:
 
     Mat_<Vec3b> nnf_to_image() const;
 
-    Mat_<Vec3b> recompose_origin_with_nnf(int k = 0) const;
+    Mat_<Vec3b> recompose_origin_with_nnf() const;
 
     int target_patches_rows, target_patches_cols;
 
@@ -73,8 +73,6 @@ PatchMatcher<P>::PatchMatcher(Mat_<Vec3b> origin, Mat_<Vec3b> target):
         origin(origin), target(target),
         target_patches_rows(target.rows - P + 1),
         target_patches_cols(target.cols - P + 1)
-//        origin_patches(origin, P),
-//        target_patches(target, P) {
 {
     cv::cvtColor(origin, origin_lab, cv::COLOR_BGR2Lab);
     cv::cvtColor(target, target_lab, cv::COLOR_BGR2Lab);
@@ -85,12 +83,10 @@ PatchMatcher<P>::PatchMatcher(Mat_<Vec3b> origin, Mat_<Vec3b> target):
 template<int P>
 void PatchMatcher<P>::initialize_nnf() {
     nnf = Mat_<Vec2i>(origin.rows + 1 - P, origin.cols + 1 - P);
-//    distances = Mat_<int>(origin.rows + 1 - P, origin.cols + 1 - P);
     cv::randu(nnf, cv::Scalar(0, 0), cv::Scalar(target.rows + 1 - P, target.cols + 1 - P));
     for (int i = 0; i < nnf.rows; i++) {
         for (int j = 0; j < nnf.cols; j++) {
             nnf(i, j) -= Vec2i(i, j);
-//            distances(i, j) = checked_distance(i, j, nnf(i, j), std::numeric_limits<int>::max());
         }
     }
 }
@@ -168,7 +164,7 @@ void PatchMatcher<P>::iterate_ul() {
 template<int P>
 void PatchMatcher<P>::propagate(int i, int j, const array<Vec2i, 2> &neighbors) {
 
-    int min_d = checked_distance(i, j, Vec2i(i, j), 0);
+    int min_d = checked_distance(i, j, Vec2i(i, j));
     for (int n = 0; n < neighbors.size(); n++) {
         int d = checked_distance(i, j, neighbors[n], min_d);
         if (d < min_d) {
@@ -180,14 +176,15 @@ void PatchMatcher<P>::propagate(int i, int j, const array<Vec2i, 2> &neighbors) 
 
 template<int P>
 void PatchMatcher<P>::random_search(int i, int j) {
-    int r = std::max({i, j, target_patches_rows - 1 - i, target_patches_cols - 1 - j});
-    int min_d = checked_distance(i, j, Vec2i(i, j), 0);
+    int p = i + nnf(i, j)[0], q = j + nnf(i, j)[1];
+    int r = std::max({p, q, target_patches_rows - 1 - p, target_patches_cols - 1 - q});
+    int min_d = unchecked_distance(i, j, p, q);
     while (r > 1) {
-        int kmin = std::max(0, i - r);
-        int kmax = std::min(target_patches_rows - 1, i + r);
+        int kmin = std::max(0, p - r);
+        int kmax = std::min(target_patches_rows - 1, p + r);
         int k = (rand() % (kmax - kmin)) + kmin;
-        int lmin = std::max(0, j - r);
-        int lmax = std::min(target_patches_cols - 1, j + r);
+        int lmin = std::max(0, q - r);
+        int lmax = std::min(target_patches_cols - 1, q + r);
         int l = (rand() % (lmax - lmin)) + lmin;
 
         int d = unchecked_distance(i, j, k, l, min_d);
@@ -228,16 +225,27 @@ Mat_<Vec3b> PatchMatcher<P>::nnf_to_image() const {
 
 
 template<int P>
-Mat_<Vec3b> PatchMatcher<P>::recompose_origin_with_nnf(int k) const {
-    Mat_<Vec3b> rebuilt(origin.rows, origin.cols);
-    for (int i = k; i < origin.rows + 1 - P + k; i++) {
-        for (int j = k; j < origin.cols + 1 - P + k; j++) {
-            Vec2i offset = nnf(i - (i % P) + k, j - (j % P) + k);
-            rebuilt(i, j) = target(i + offset[0], j + offset[1]);
+Mat_<Vec3b> PatchMatcher<P>::recompose_origin_with_nnf() const {
+
+    Mat_<Vec3i> rebuilt(origin.rows, origin.cols, Vec3i(0, 0, 0));
+    Mat_<Vec3i> counts(origin.rows, origin.cols, Vec3i(0, 0, 0));
+    Mat_<Vec3i> ones(P, P, Vec3i(1, 1, 1));
+    for (int i = 0; i < nnf.rows; i++) {
+        for (int j = 0; j < nnf.cols; j++) {
+            Vec2i offset = nnf(i, j);
+            cv::Rect r(j, i, P, P);
+            rebuilt(r) += target(cv::Rect(j + offset[1], i + offset[0], P, P));
+            counts(r) += ones;
         }
     }
 
-    return rebuilt;
+    cv::divide(rebuilt, counts, rebuilt);
+    Mat_<Vec3b> result;
+    rebuilt.convertTo(result, CV_8UC3);
+
+    return result;
 }
+
+
 
 #endif //COPY_MOVE_DETECTOR_PATCH_MATCHER_H
