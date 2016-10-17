@@ -19,6 +19,6 @@ add_executable(copy_move_detector ${SOURCE_FILES})
 # EXTERNAL LIBRAIRIES =====================
 
 # OpenCV
-FIND_PACKAGE(OpenCV REQUIRED)
+FIND_PACKAGE(OpenCV 3.1 REQUIRED)
 INCLUDE_DIRECTORIES(${OpenCV_INCLUDE_DIRS})
 TARGET_LINK_LIBRARIES(copy_move_detector ${OpenCV_LIBS})
