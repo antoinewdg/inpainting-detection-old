@@ -28,6 +28,10 @@ using std::cerr;
 using std::array;
 using cv::Vec3b;
 using cv::Vec2i;
+using cv::Vec3i;
+using cv::Vec3f;
+using cv::Vec3s;
+using cv::Rect;
 using cv::Point2f;
 
 
@@ -63,7 +67,7 @@ inline Mat_<float> load_grayscale(const string &filename) {
     original = cv::imread(filename, cv::IMREAD_GRAYSCALE); // Read the file
     if (original.empty())                      // Check for invalid input
     {
-        cerr << "Could not open or find the image" << endl;
+        cerr << "Could not open or find " << filename << endl;
     }
     original.convertTo(out, CV_32F);
     out /= 255.f;
@@ -81,6 +85,13 @@ inline Mat_<float> to_grayscale(Mat_<Vec3b> &src) {
 inline void display_and_block(cv::Mat im) {
     cv::imshow("window", im);
     cv::waitKey();
+}
+
+template<class T>
+inline void display_one_by_one(vector<cv::Mat_<T>> images) {
+    for (auto im : images) {
+        display_and_block(im);
+    }
 }
 
 inline Mat_<Vec3b> load_color(const string &filename) {
