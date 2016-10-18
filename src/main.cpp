@@ -12,7 +12,6 @@ int main(int argc, char *argv[]) {
     auto mask_s = load_grayscale("files/lena_mask.png");
     auto mask_t = load_grayscale("files/lena_mask_d.png");
 
-
     PatchMatcher<5> matcher(image_s, mask_s, image_t, mask_t);
 
     double t = measure<>::execution([&matcher] {
