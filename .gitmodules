@@ -1,0 +1,3 @@
+[submodule "advanced-imshow"]
+	path = advanced-imshow
+	url = git@github.com:antoinewdg/opencv-advanced-imshow.git

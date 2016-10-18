@@ -9,7 +9,7 @@
 //
 
 
-
+#include <cstdlib>
 #include <iostream>
 #include <chrono>
 #include <array>
@@ -18,6 +18,12 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+
+#ifdef USE_ADVANCED_IMSHOW
+
+#include "oai/image_view.h"
+
+#endif
 
 using cv::Mat_;
 using std::vector;
@@ -31,6 +37,7 @@ using cv::Vec2i;
 using cv::Vec3i;
 using cv::Vec3f;
 using cv::Vec3s;
+using cv::Vec4b;
 using cv::Rect;
 using cv::Point2f;
 
@@ -82,10 +89,18 @@ inline Mat_<float> to_grayscale(Mat_<Vec3b> &src) {
     return out;
 }
 
-inline void display_and_block(cv::Mat im) {
-    cv::imshow("window", im);
+template<class T>
+inline void display_and_block(Mat_<T> im) {
+
+#ifdef USE_ADVANCED_IMSHOW
+    oai::ImageView view(im);
+    view.display();
+#else
+    cv::imshow("m_window", im);
     cv::waitKey();
+#endif // USE_ADVANCED_IMSHOW
 }
+
 
 template<class T>
 inline void display_one_by_one(vector<cv::Mat_<T>> images) {
