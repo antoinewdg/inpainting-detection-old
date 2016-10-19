@@ -18,7 +18,7 @@ inline int euclidian_distance(const Mat_<Vec3b> &p, const Mat_<Vec3b> &q, int ma
             int b = int(p(i, j)[1]) - q(i, j)[1];
             int c = int(p(i, j)[2]) - q(i, j)[2];
             d += a * a + b * b + c * c;
-            if (d >= max_d) {
+            if (d > max_d) {
                 return d;
             }
         }
@@ -36,7 +36,7 @@ inline int l1_distance(const Mat_<Vec3b> &p, const Mat_<Vec3b> &q, int max_d) {
             d += std::abs<int>(int(p(i, j)[0]) - q(i, j)[0]);
             d += std::abs<int>(int(p(i, j)[1]) - q(i, j)[1]);
             d += std::abs<int>(int(p(i, j)[2]) - q(i, j)[2]);
-            if (d >= max_d) {
+            if (d > max_d) {
                 return d;
             }
         }
