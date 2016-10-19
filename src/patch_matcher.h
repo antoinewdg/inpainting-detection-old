@@ -15,7 +15,7 @@
 /**
  * Implementation of the patch match algorithm.
  */
-template<int P>
+template<class DistanceFunction>
 class PatchMatcher {
 public:
     /**
@@ -27,20 +27,9 @@ public:
      * @return
      */
     PatchMatcher(Mat_<Vec3b> s, Mat_<float> s_mask,
-                 Mat_<Vec3b> t, Mat_<float> t_mask);
+                 Mat_<Vec3b> t, Mat_<float> t_mask,
+                 DistanceFunction distance_function);
 
-    /**
-     * Distance between two patches.
-     *
-     * Uses the patch values in the CIE L*a*b* color space.
-     *
-     * @param p position of the source patch
-     * @param q position of the target patch
-     * @param max_d maximum distance used for early termination
-     * @return
-     */
-    int patch_distance(const Vec2i &p, const Vec2i &q,
-                       int max_d = std::numeric_limits<int>::max()) const;
 
     /**
      * Intitialize the nnf with random values.
@@ -139,13 +128,16 @@ public:
 
     int _propagate_distance(const Vec2i &p, const Vec2i &neighbor, int max_d);
 
-    Mat_<Vec3b> s_rgb, t_rgb, s_lab, t_lab;
+    static constexpr int P = DistanceFunction::patch_size;
+
+    Mat_<Vec3b> s_rgb, t_rgb;
     Mat_<float> s_mask, t_mask;
     Mat_<float> s_patches_mask, t_patches_mask;
     Mat_<Vec2i> m_nnf;
     vector<Vec2i> s_pixels, t_pixels, s_patches, t_patches;
     std::default_random_engine generator;
     int current_max_distance;
+    DistanceFunction patch_distance;
 
 };
 
@@ -175,16 +167,17 @@ Mat_<float> _get_patches_mask(Mat_<float> mask) {
     return p_mask;
 }
 
-template<int P>
-PatchMatcher<P>::PatchMatcher(Mat_<Vec3b> s, Mat_<float> s_mask,
-                              Mat_<Vec3b> t, Mat_<float> t_mask) :
+template<class DistanceFunction>
+PatchMatcher<DistanceFunction>::PatchMatcher(Mat_<Vec3b> s, Mat_<float> s_mask,
+                                             Mat_<Vec3b> t, Mat_<float> t_mask,
+                                             DistanceFunction distance_function) :
         s_rgb(s), t_rgb(t), s_mask(s_mask), t_mask(t_mask),
         generator(2),
 //        generator(time(0)),
-        current_max_distance(-1) {
+        current_max_distance(-1),
+        patch_distance(distance_function) {
 
-    cv::cvtColor(s_rgb, s_lab, cv::COLOR_BGR2Lab);
-    cv::cvtColor(t_rgb, t_lab, cv::COLOR_BGR2Lab);
+    patch_distance.initialize(s_rgb, t_rgb);
     s_pixels = _enumerate_pixels(s_mask);
     t_pixels = _enumerate_pixels(t_mask);
 
@@ -196,8 +189,8 @@ PatchMatcher<P>::PatchMatcher(Mat_<Vec3b> s, Mat_<float> s_mask,
     initialize_nnf();
 }
 
-template<int P>
-void PatchMatcher<P>::initialize_nnf() {
+template<class DistanceFunction>
+void PatchMatcher<DistanceFunction>::initialize_nnf() {
     m_nnf = Mat_<Vec2i>(s_rgb.rows + 1 - P, s_rgb.cols + 1 - P, Vec2i(0, 0));
     std::uniform_int_distribution<int> dist(0, t_patches.size() - 1);
 
@@ -209,31 +202,8 @@ void PatchMatcher<P>::initialize_nnf() {
 
 }
 
-template<int P>
-int PatchMatcher<P>::patch_distance(const Vec2i &p, const Vec2i &q, int max_d) const {
-    int d = 0;
-//    cout << q << endl;
-    Mat_<Vec3b> s_patch = s_lab(get_patch_rect(p)),
-            t_patch = t_lab(get_patch_rect(q));
-    for (int i = 0; i < P; i++) {
-        for (int j = 0; j < P; j++) {
-            int a = int(s_patch(i, j)[0]) - t_patch(i, j)[0];
-            int b = int(s_patch(i, j)[1]) - t_patch(i, j)[1];
-            int c = int(s_patch(i, j)[2]) - t_patch(i, j)[2];
-            d += a * a + b * b + c * c;
-//            if (d >= max_d) {
-//                return d;
-//            }
-        }
-
-    }
-
-    return d;
-}
-
-
-template<int P>
-void PatchMatcher<P>::random_search(const Vec2i &p) {
+template<class DistanceFunction>
+void PatchMatcher<DistanceFunction>::random_search(const Vec2i &p) {
     Vec2i q = nnf(p) + p;
     int min_d = patch_distance(p, q);
     std::uniform_int_distribution<int> dist(0, t_patches.size() - 1);
@@ -249,8 +219,8 @@ void PatchMatcher<P>::random_search(const Vec2i &p) {
     }
 }
 
-template<int P>
-int PatchMatcher<P>::_propagate_distance(const Vec2i &p, const Vec2i &n, int max_d) {
+template<class DistanceFunction>
+int PatchMatcher<DistanceFunction>::_propagate_distance(const Vec2i &p, const Vec2i &n, int max_d) {
 
     // Check that neighbor is not out of bounds of nnf
     if (n[0] < 0 || n[1] < 0 || n[0] >= m_nnf.rows || n[1] >= m_nnf.cols) {
@@ -267,16 +237,12 @@ int PatchMatcher<P>::_propagate_distance(const Vec2i &p, const Vec2i &n, int max
     return patch_distance(p, q, max_d);
 }
 
-template<int P>
-void PatchMatcher<P>::propagate(const Vec2i &p, const array<Vec2i, 2> &neighbors) {
+template<class DistanceFunction>
+void PatchMatcher<DistanceFunction>::propagate(const Vec2i &p, const array<Vec2i, 2> &neighbors) {
     Vec2i q = nnf(p) + p;
     int min_d = patch_distance(p, q);
     for (int n = 0; n < neighbors.size(); n++) {
         int d = _propagate_distance(p, neighbors[n], min_d);
-//        if (p[0] >= 224 && p[0] <= 300 && p[1] >= 151 && p[1] >= 232 && min_d > 0 && d > min_d) {
-//            cout << "Comparing " << p << " with " << neighbors[n] << " current d=" << min_d << " candidate " << d
-//                 << endl;
-//        }
         if (d < min_d) {
             min_d = d;
             m_nnf(p) = m_nnf(neighbors[n]);
@@ -285,16 +251,16 @@ void PatchMatcher<P>::propagate(const Vec2i &p, const array<Vec2i, 2> &neighbors
 
 }
 
-template<int P>
-void PatchMatcher<P>::iterate_rd() {
+template<class DistanceFunction>
+void PatchMatcher<DistanceFunction>::iterate_rd() {
     for (const Vec2i &p : s_patches) {
         propagate(p, {p - Vec2i(1, 0), p - Vec2i(0, 1)});
         random_search(p);
     }
 }
 
-template<int P>
-void PatchMatcher<P>::iterate_lu() {
+template<class DistanceFunction>
+void PatchMatcher<DistanceFunction>::iterate_lu() {
     for (auto it = s_patches.rbegin(); it != s_patches.rend(); it++) {
         const Vec2i &p = *it;
         propagate(p, {p + Vec2i(1, 0), p + Vec2i(0, 1)});
@@ -302,8 +268,8 @@ void PatchMatcher<P>::iterate_lu() {
     }
 }
 
-template<int P>
-void PatchMatcher<P>::iterate_n_times(int n) {
+template<class DistanceFunction>
+void PatchMatcher<DistanceFunction>::iterate_n_times(int n) {
     for (int i = 0; i < n; i++) {
         if (i % 2 == 0) {
             iterate_rd();
@@ -313,8 +279,8 @@ void PatchMatcher<P>::iterate_n_times(int n) {
     }
 }
 
-template<int P>
-Mat_<Vec3b> PatchMatcher<P>::nnf_to_image() const {
+template<class DistanceFunction>
+Mat_<Vec3b> PatchMatcher<DistanceFunction>::nnf_to_image() const {
     Mat_<Vec3b> hsv_values(m_nnf.rows, m_nnf.cols, Vec3b(0, 0, 125));
     double max_norm = cv::norm(Vec2i(m_nnf.rows, m_nnf.cols), cv::NORM_L2);
     for (const Vec2i &p : s_patches) {
@@ -333,8 +299,8 @@ Mat_<Vec3b> PatchMatcher<P>::nnf_to_image() const {
     return hsv_values;
 }
 
-template<int P>
-Mat_<uchar> PatchMatcher<P>::distance_map() {
+template<class DistanceFunction>
+Mat_<uchar> PatchMatcher<DistanceFunction>::distance_map() {
     Mat_<int> distances(m_nnf.size(), 0);
     for (const Vec2i &p : s_patches) {
         Vec2i q = p + nnf(p);
@@ -358,8 +324,8 @@ Mat_<uchar> PatchMatcher<P>::distance_map() {
     return result;
 }
 
-template<int P>
-Mat_<Vec3b> PatchMatcher<P>::build_s_with_patches_from_t() const {
+template<class DistanceFunction>
+Mat_<Vec3b> PatchMatcher<DistanceFunction>::build_s_with_patches_from_t() const {
     Mat_<Vec3f> accumulated(s_rgb.size(), Vec3f(0, 0, 0));
     Mat_<float> counts(s_rgb.size(), 0);
     Mat_<int> ones(P, P, 1);
