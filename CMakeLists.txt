@@ -8,7 +8,8 @@ set(SOURCE_FILES src/main.cpp
         src/utils.h
         src/shuffle.h
         src/patch_matcher.h
-        src/patch_distances.h)
+        src/patch_distances.h
+        src/masked_patch_image.h)
 
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)

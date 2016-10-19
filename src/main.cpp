@@ -1,9 +1,7 @@
-#include <cstdlib>
 #include <iostream>
 #include "utils.h"
 #include "patch_matcher.h"
 #include "patch_distances.h"
-#include "shuffle.h"
 
 int main(int argc, char *argv[]) {
 
@@ -13,25 +11,32 @@ int main(int argc, char *argv[]) {
     auto mask_s = load_grayscale("files/lena_mask.png");
     auto mask_t = load_grayscale("files/lena_mask_d.png");
 
-    typedef EuclidianPatchDistanceRGB<5> ERGB;
-    PatchMatcher<ERGB> matcher_ergb(image_s, mask_s, image_t, mask_t, ERGB());
+    display_and_block(mask_s);
+    display_and_block(mask_t);
 
-    double t = measure<>::execution([&matcher_ergb] {
+    const int P = 5;
+    MaskedPatchImage s(image_s, mask_s, P);
+    MaskedPatchImage t(image_t, mask_t, P);
+
+    typedef EuclidianPatchDistanceRGB<P> ERGB;
+    PatchMatcher<ERGB> matcher_ergb(s, t, ERGB());
+
+    double i = measure<>::execution([&matcher_ergb] {
         matcher_ergb.iterate_n_times(5);
     });
 
-    cout << "Done in " << t / 1000 << "s" << endl;
+    cout << "Done in " << i / 1000 << "s" << endl;
     display_and_block(matcher_ergb.nnf_to_image());
 
 
-    typedef EuclidianPatchDistanceLab<5> ELab;
-    PatchMatcher<ELab> matcher_elab(image_s, mask_s, image_t, mask_t, ELab());
+    typedef EuclidianPatchDistanceLab<P> ELab;
+    PatchMatcher<ELab> matcher_elab(s, t, ELab());
 
-    t = measure<>::execution([&matcher_elab] {
+    i = measure<>::execution([&matcher_elab] {
         matcher_elab.iterate_n_times(5);
     });
 
-    cout << "Done in " << t / 1000 << "s" << endl;
+    cout << "Done in " << i / 1000 << "s" << endl;
     display_and_block(matcher_elab.nnf_to_image());
 
 
