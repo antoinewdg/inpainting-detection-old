@@ -141,31 +141,6 @@ public:
 
 };
 
-vector<Vec2i> _enumerate_pixels(Mat_<float> mask) {
-    vector<Vec2i> pixels;
-    for (int i = 0; i < mask.rows; i++) {
-        for (int j = 0; j < mask.cols; j++) {
-            if (mask(i, j) != 0) {
-                pixels.push_back(Vec2i(i, j));
-            }
-        }
-    }
-    return pixels;
-}
-
-
-template<int P>
-Mat_<float> _get_patches_mask(Mat_<float> mask) {
-    Mat_<float> p_mask(mask.rows - P + 1, mask.cols - P + 1, 0.f);
-    for (int i = 0; i < mask.rows - P + 1; i++) {
-        for (int j = 0; j < mask.cols - P + 1; j++) {
-            if (cv::countNonZero(mask(Rect(j, i, P, P))) > 0) {
-                p_mask(i, j) = 1.f;
-            }
-        }
-    }
-    return p_mask;
-}
 
 template<class DistanceFunction>
 PatchMatcher<DistanceFunction>::PatchMatcher(const MImage &s, const MImage &t,
@@ -174,8 +149,10 @@ PatchMatcher<DistanceFunction>::PatchMatcher(const MImage &s, const MImage &t,
         generator(time(0)),
         current_max_distance(-1),
         patch_distance(distance_function) {
-
+    unsigned long seed = time(0);
+    generator.seed(time(0));
     patch_distance.initialize(s.image, t.image);
+    cout << "Seeding " << seed << endl;
 
 
     initialize_nnf();
@@ -183,7 +160,7 @@ PatchMatcher<DistanceFunction>::PatchMatcher(const MImage &s, const MImage &t,
 
 template<class DistanceFunction>
 void PatchMatcher<DistanceFunction>::initialize_nnf() {
-    m_nnf = Mat_<Vec2i>(s.p_size(), Vec2i(0, 0));
+    m_nnf = Mat_<Vec2i>(s.size(), Vec2i(0, 0));
     std::uniform_int_distribution<int> dist(0, t.total_patches.size() - 1);
 
     for (const Vec2i &p : s.partial_patches) {
@@ -215,14 +192,15 @@ template<class DistanceFunction>
 int PatchMatcher<DistanceFunction>::_propagate_distance(const Vec2i &p, const Vec2i &n, int max_d) {
 
     // Check that neighbor is not out of bounds of nnf
-    if (n[0] < 0 || n[1] < 0 || n[0] >= m_nnf.rows || n[1] >= m_nnf.cols) {
+    if (n[0] < P / 2 || n[1] < P / 2
+        || n[0] >= m_nnf.rows - (P / 2) || n[1] >= m_nnf.cols - (P / 2)) {
         return std::numeric_limits<int>::max();
     }
 
     Vec2i q = nnf(n) + p;
     if (q[0] < 0 || q[1] < 0
-        || q[0] >= t.p_rows
-        || q[1] >= t.p_cols
+        || q[0] >= t.rows
+        || q[1] >= t.cols
         || t.total_patches_mask(q[0], q[1]) != 1.f) {
         return std::numeric_limits<int>::max();
     }

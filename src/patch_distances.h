@@ -50,7 +50,7 @@ inline int l1_distance(const Mat_<Vec3b> &p, const Mat_<Vec3b> &q, int max_d) {
 
 template<int P>
 Rect get_patch_rect(const Vec2i &p) {
-    return Rect(p[1], p[0], P, P);
+    return Rect(p[1] - (P/2), p[0] - (P/2), P, P);
 }
 
 
