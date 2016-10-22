@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
 //    display_and_block(s.mask);
 //    display_and_block(s.total_patches_mask);
 
-    typedef EuclidianPatchDistanceRGB<P> ERGB;
+    typedef EuclidianPatchDistanceLab<P> ERGB;
 //    PatchMatcher<ERGB> matcher(s, t, ERGB());
 //
 ////    display_and_block(matcher.nnf_to_image());
@@ -40,7 +40,8 @@ int main(int argc, char *argv[]) {
 //    updater.update();
 //    display_and_block(s.image);
     for (int i = 0; i < 10; i++) {
-        PatchMatcher<ERGB> matcher(s, t, ERGB());
+        ERGB d(s.image, t.image);
+        PatchMatcher<ERGB> matcher(s, t, d);
         matcher.iterate_n_times(5);
 //        cout << matcher.m_nnf << endl;
         display_and_block(matcher.nnf_to_image());

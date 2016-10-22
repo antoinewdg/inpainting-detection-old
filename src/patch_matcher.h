@@ -31,7 +31,7 @@ public:
      * @return
      */
     PatchMatcher(const MImage &s, const MImage &t,
-                 DistanceFunction distance_function);
+                 const DistanceFunction &distance_function);
 
 
     /**
@@ -144,14 +144,13 @@ public:
 
 template<class DistanceFunction>
 PatchMatcher<DistanceFunction>::PatchMatcher(const MImage &s, const MImage &t,
-                                             DistanceFunction distance_function) :
+                                             const DistanceFunction &distance_function) :
         s(s), t(t),
         generator(time(0)),
         current_max_distance(-1),
         patch_distance(distance_function) {
     unsigned long seed = time(0);
     generator.seed(time(0));
-    patch_distance.initialize(s.image, t.image);
     cout << "Seeding " << seed << endl;
 
 

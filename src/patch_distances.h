@@ -59,7 +59,7 @@ class EuclidianPatchDistanceRGB {
 public:
     static constexpr int patch_size = P;
 
-    void initialize(const Mat_<Vec3b> &s, const Mat_<Vec3b> &t) {
+    EuclidianPatchDistanceRGB(const Mat_<Vec3b> &s, const Mat_<Vec3b> &t) {
         m_s = s;
         m_t = t;
     }
@@ -81,7 +81,7 @@ class EuclidianPatchDistanceLab {
 public:
     static constexpr int patch_size = P;
 
-    void initialize(const Mat_<Vec3b> &s, const Mat_<Vec3b> &t) {
+    EuclidianPatchDistanceLab(const Mat_<Vec3b> &s, const Mat_<Vec3b> &t) {
         cv::cvtColor(s, m_s, cv::COLOR_BGR2Lab);
         cv::cvtColor(t, m_t, cv::COLOR_BGR2Lab);
     }
